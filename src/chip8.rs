@@ -1,0 +1,63 @@
+use core::time;
+use std::{thread::sleep, time::Instant};
+
+use crate::{
+    cpu::{CPU, Instruction},
+    display::{CLIBackend, Display, DisplayBackend},
+    ram::{Ram, RomError},
+};
+
+pub struct CHIP8<B: DisplayBackend> {
+    cpu: CPU,
+    ram: Ram,
+    display: Display<B>,
+}
+
+impl CHIP8<CLIBackend> {
+    pub fn new() -> Self {
+        return CHIP8 {
+            cpu: CPU::new(),
+            ram: Ram::new(),
+            display: Display::<CLIBackend>::new(CLIBackend::default()),
+        };
+    }
+}
+
+impl<B: DisplayBackend> CHIP8<B> {
+    pub fn new_custom_display_backend(display_backend: B) -> Self {
+        return CHIP8 {
+            cpu: CPU::new(),
+            ram: Ram::new(),
+            display: Display::<B>::new(display_backend),
+        };
+    }
+
+    pub fn load_rom(&mut self, rom_data: &[u8]) -> Result<(), RomError> {
+        self.cpu.pc = 0x200;
+
+        return self.ram.load_rom(rom_data);
+    }
+
+    fn tick(&mut self) {
+        let instruction = self.cpu.fetch(self.ram.memory);
+        let instruction = CPU::decode(instruction);
+        self.cpu
+            .execute(instruction, &mut self.ram.memory, &mut self.display.pixels);
+
+        if matches!(instruction, Instruction::Display { .. }) {
+            self.display.render();
+        }
+    }
+
+    pub fn start(&mut self) {
+        loop {
+            let now = Instant::now();
+
+            self.tick();
+
+            sleep(time::Duration::from_nanos(
+                (1000000000 / 700) - now.elapsed().as_nanos() as u64,
+            ));
+        }
+    }
+}
