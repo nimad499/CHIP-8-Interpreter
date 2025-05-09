@@ -41,8 +41,22 @@ impl<B: DisplayBackend> CHIP8<B> {
     fn tick(&mut self) {
         let instruction = self.cpu.fetch(self.ram.memory);
         let instruction = CPU::decode(instruction);
-        self.cpu
-            .execute(instruction, &mut self.ram.memory, &mut self.display.pixels);
+
+        let pressed_keys = if matches!(
+            instruction,
+            Instruction::SkipIfPressed(..) | Instruction::SkipIfNotPressed(..)
+        ) {
+            self.display.read_keys()
+        } else {
+            Vec::new()
+        };
+
+        self.cpu.execute(
+            instruction,
+            &mut self.ram.memory,
+            &mut self.display.pixels,
+            pressed_keys,
+        );
 
         if matches!(instruction, Instruction::Display { .. }) {
             self.display.render();

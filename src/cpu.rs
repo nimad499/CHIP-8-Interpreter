@@ -15,6 +15,8 @@ pub enum Instruction {
     JumpWithOffset(u16),
     Random(u8, u8),
     Display { x: u8, y: u8, height: u8 },
+    SkipIfPressed(u8),
+    SkipIfNotPressed(u8),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -105,6 +107,11 @@ impl CPU {
                 y,
                 height: low_byte & 0x0F,
             },
+            0xE0 => match low_byte {
+                0x9E => Instruction::SkipIfPressed(x),
+                0xA1 => Instruction::SkipIfNotPressed(x),
+                _ => panic!("Invalid instruction: {:X}", instruction),
+            },
             _ => panic!("Unknown opcode: {:04X}", opcode),
         };
 
@@ -116,6 +123,7 @@ impl CPU {
         instruction: Instruction,
         memory: &mut [u8; 4096],
         display: &mut [[bool; 64]; 32],
+        pressed_keys: Vec<u8>,
     ) {
         match instruction {
             Instruction::ClearScreen() => *display = [[false; 64]; 32],
@@ -218,6 +226,16 @@ impl CPU {
                             display[y_cord + n][x_cord + m] = !display[y_cord + n][x_cord + m];
                         }
                     }
+                }
+            }
+            Instruction::SkipIfPressed(x) => {
+                if pressed_keys.contains(&self.registers[x as usize]) {
+                    self.pc += 2;
+                }
+            }
+            Instruction::SkipIfNotPressed(x) => {
+                if !pressed_keys.contains(&self.registers[x as usize]) {
+                    self.pc += 2;
                 }
             }
         }

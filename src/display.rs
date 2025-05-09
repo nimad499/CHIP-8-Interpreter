@@ -1,23 +1,52 @@
+use std::{
+    collections::HashSet,
+    io::{self, Write},
+    time::{Duration, Instant},
+};
+
+use crossterm::{
+    event::{self, Event, poll},
+    terminal,
+};
+
+type KeyMap = [char; 16];
+
 pub trait DisplayBackend: Default {
     fn render(&mut self, pixels: &[[bool; 64]; 32]);
+    fn read_keys(&self) -> Vec<u8>;
 }
 
 pub struct CLIBackend {
     pub pixel_character: char,
     buffer: String,
+    key_map: KeyMap,
+}
+
+impl Drop for CLIBackend {
+    fn drop(&mut self) {
+        terminal::disable_raw_mode().unwrap();
+    }
 }
 
 impl CLIBackend {
     fn new() -> Self {
+        terminal::enable_raw_mode().unwrap();
+
         return CLIBackend {
             pixel_character: 'O',
-            buffer: String::with_capacity(2080),
+            // ToDo: Replace this with array
+            buffer: String::with_capacity(2112),
+            key_map: [
+                // 49, 50, 51, 52, 113, 119, 101, 114, 97, 115, 100, 102, 122, 120, 99, 118,
+                '1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v',
+            ],
         };
     }
 
     fn clear() {
         if cfg!(unix) {
             print!("{esc}c", esc = 27 as char);
+            io::stdout().flush().unwrap();
         } else if cfg!(windows) {
             todo!();
         }
@@ -39,11 +68,44 @@ impl DisplayBackend for CLIBackend {
                 self.buffer
                     .push(if pixel { self.pixel_character } else { ' ' });
             }
+            self.buffer.push('\r');
             self.buffer.push('\n');
         }
 
         Self::clear();
         print!("{}", self.buffer);
+        io::stdout().flush().unwrap();
+    }
+
+    fn read_keys(&self) -> Vec<u8> {
+        let mut pressed_keys = HashSet::<u8>::new();
+
+        let start = Instant::now();
+        let time_window = Duration::from_micros(10);
+        let single_polling_time = Duration::from_micros(1);
+
+        while start.elapsed() < time_window {
+            if poll(single_polling_time).unwrap() {
+                if let Event::Key(event) = event::read().unwrap() {
+                    if event.is_press() {
+                        match self
+                            .key_map
+                            .iter()
+                            .position(|key_code| *key_code == event.code.as_char().unwrap())
+                        {
+                            Some(key_code) => {
+                                pressed_keys.insert(key_code as u8);
+                            }
+                            None => (),
+                        };
+                    }
+                }
+            }
+        }
+
+        let pressed_keys = Vec::from_iter(pressed_keys);
+
+        return pressed_keys;
     }
 }
 
@@ -62,5 +124,9 @@ impl<B: DisplayBackend> Display<B> {
 
     pub fn render(&mut self) {
         self.backend.render(&self.pixels);
+    }
+
+    pub fn read_keys(&self) -> Vec<u8> {
+        return self.backend.read_keys();
     }
 }
