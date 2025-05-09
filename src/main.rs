@@ -10,6 +10,7 @@ mod chip8;
 mod cpu;
 mod display;
 mod ram;
+mod timer;
 
 fn main() {
     let rom_path = Path::new("/home/nima/Downloads/1-chip8-logo.ch8");

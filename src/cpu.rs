@@ -1,3 +1,7 @@
+use std::hint::unreachable_unchecked;
+
+use crate::timer::Timer;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Instruction {
     ClearScreen(),
@@ -17,6 +21,10 @@ pub enum Instruction {
     Display { x: u8, y: u8, height: u8 },
     SkipIfPressed(u8),
     SkipIfNotPressed(u8),
+    GetDelayTimer(u8),
+    WaitForKey(u8),
+    SetDelayTimer(u8),
+    SetSoundTimer(u8),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -37,6 +45,8 @@ pub struct CPU {
     i: u16,
     registers: [u8; 16],
     stack: Vec<u16>,
+    delay_timer: Timer,
+    sound_timer: Timer,
 }
 
 impl CPU {
@@ -46,6 +56,8 @@ impl CPU {
             i: 0,
             registers: [0; 16],
             stack: Vec::new(),
+            delay_timer: Timer::new(),
+            sound_timer: Timer::new(),
         };
     }
 
@@ -112,7 +124,14 @@ impl CPU {
                 0xA1 => Instruction::SkipIfNotPressed(x),
                 _ => panic!("Invalid instruction: {:X}", instruction),
             },
-            _ => panic!("Unknown opcode: {:04X}", opcode),
+            0xF0 => match low_byte {
+                0x07 => Instruction::GetDelayTimer(x),
+                0x0A => Instruction::WaitForKey(x),
+                0x15 => Instruction::SetDelayTimer(x),
+                0x18 => Instruction::SetSoundTimer(x),
+                _ => panic!("Invalid instruction: {:X}", instruction),
+            },
+            _ => unsafe { unreachable_unchecked() },
         };
 
         return instruction;
@@ -238,6 +257,12 @@ impl CPU {
                     self.pc += 2;
                 }
             }
+            Instruction::GetDelayTimer(x) => {
+                self.registers[x as usize] = self.delay_timer.get_value()
+            }
+            Instruction::WaitForKey(x) => todo!(),
+            Instruction::SetDelayTimer(x) => self.delay_timer.set_value(self.registers[x as usize]),
+            Instruction::SetSoundTimer(x) => self.sound_timer.set_value(self.registers[x as usize]),
         }
     }
 }

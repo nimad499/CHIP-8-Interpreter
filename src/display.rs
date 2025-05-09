@@ -36,6 +36,7 @@ impl CLIBackend {
             pixel_character: 'O',
             // ToDo: Replace this with array
             buffer: String::with_capacity(2112),
+            // ToDo: Check the performance of HashMap for the key_map
             key_map: [
                 // 49, 50, 51, 52, 113, 119, 101, 114, 97, 115, 100, 102, 122, 120, 99, 118,
                 '1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v',
