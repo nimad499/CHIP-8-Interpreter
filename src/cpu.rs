@@ -122,11 +122,11 @@ impl CPU {
         &mut self,
         instruction: Instruction,
         memory: &mut [u8; 4096],
-        display: &mut [[bool; 64]; 32],
+        pixels: &mut [[bool; 64]; 32],
         pressed_keys: Vec<u8>,
     ) {
         match instruction {
-            Instruction::ClearScreen() => *display = [[false; 64]; 32],
+            Instruction::ClearScreen() => *pixels = [[false; 64]; 32],
             Instruction::Return() => {
                 self.pc = self.stack.pop().expect("Return while stack is empty.")
             }
@@ -219,11 +219,11 @@ impl CPU {
                         let bit = ((row >> (7 - m)) & 0x01) == 1;
 
                         if bit {
-                            if display[y_cord + n][x_cord + m] {
+                            if pixels[y_cord + n][x_cord + m] {
                                 self.registers[0xF] = 1;
                             }
 
-                            display[y_cord + n][x_cord + m] = !display[y_cord + n][x_cord + m];
+                            pixels[y_cord + n][x_cord + m] = !pixels[y_cord + n][x_cord + m];
                         }
                     }
                 }
