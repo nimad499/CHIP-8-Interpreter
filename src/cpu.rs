@@ -25,6 +25,10 @@ pub enum Instruction {
     WaitForKey(u8),
     SetDelayTimer(u8),
     SetSoundTimer(u8),
+    AddToIndex(u8),
+    BCDConversion(u8),
+    Store(u8),
+    Load(u8),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -129,6 +133,10 @@ impl CPU {
                 0x0A => Instruction::WaitForKey(x),
                 0x15 => Instruction::SetDelayTimer(x),
                 0x18 => Instruction::SetSoundTimer(x),
+                0x1E => Instruction::AddToIndex(x),
+                0x33 => Instruction::BCDConversion(x),
+                0x55 => Instruction::Store(x),
+                0x65 => Instruction::Load(x),
                 _ => panic!("Invalid instruction: {:X}", instruction),
             },
             _ => unsafe { unreachable_unchecked() },
@@ -263,6 +271,32 @@ impl CPU {
             Instruction::WaitForKey(x) => todo!(),
             Instruction::SetDelayTimer(x) => self.delay_timer.set_value(self.registers[x as usize]),
             Instruction::SetSoundTimer(x) => self.sound_timer.set_value(self.registers[x as usize]),
+            Instruction::AddToIndex(x) => {
+                let old_i = self.i;
+                self.i += self.registers[x as usize] as u16;
+
+                if self.i > 0xFFF && old_i <= 0xFFF {
+                    self.registers[x as usize] = 1;
+                }
+            }
+            Instruction::BCDConversion(x) => {
+                let vx = self.registers[x as usize];
+                let i = self.i as usize;
+
+                memory[i] = vx / 100;
+                memory[i + i] = (vx / 10) % 10;
+                memory[i + 2] = vx % 10;
+            }
+            Instruction::Store(x) => {
+                let i: usize = self.i.into();
+
+                memory[i..=(i + x as usize)].copy_from_slice(&self.registers[0..=x as usize]);
+            }
+            Instruction::Load(x) => {
+                let i: usize = self.i.into();
+
+                self.registers[0..=x as usize].copy_from_slice(&memory[i..=(i + x as usize)]);
+            }
         }
     }
 }
