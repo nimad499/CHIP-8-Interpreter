@@ -51,13 +51,14 @@ impl<B: DisplayBackend> CHIP8<B> {
 
     pub fn start(&mut self) {
         loop {
-            let now = Instant::now();
+            let start = Instant::now();
 
             self.tick();
 
-            sleep(time::Duration::from_nanos(
-                (1000000000 / 700) - now.elapsed().as_nanos() as u64,
-            ));
+            let elapsed = ((1000000000 / 700) as u128).overflowing_sub(start.elapsed().as_nanos());
+            let sleep_duration = (elapsed.0 * !elapsed.1 as u128) as u64;
+
+            sleep(time::Duration::from_nanos(sleep_duration));
         }
     }
 }
