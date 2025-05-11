@@ -1,6 +1,9 @@
 use std::hint::unreachable_unchecked;
 
-use crate::timer::Timer;
+use crate::{
+    display::{Display, DisplayBackend},
+    timer::Timer,
+};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Instruction {
@@ -147,15 +150,14 @@ impl CPU {
         return instruction;
     }
 
-    pub fn execute(
+    pub fn execute<B: DisplayBackend>(
         &mut self,
         instruction: Instruction,
         memory: &mut [u8; 4096],
-        pixels: &mut [[bool; 64]; 32],
-        pressed_keys: Vec<u8>,
+        display: &mut Display<B>,
     ) {
         match instruction {
-            Instruction::ClearScreen() => *pixels = [[false; 64]; 32],
+            Instruction::ClearScreen() => display.pixels = [[false; 64]; 32],
             Instruction::Return() => {
                 self.pc = self.stack.pop().expect("Return while stack is empty.")
             }
@@ -248,21 +250,26 @@ impl CPU {
                         let bit = ((row >> (7 - m)) & 0x01) == 1;
 
                         if bit {
-                            if pixels[y_cord + n][x_cord + m] {
+                            if display.pixels[y_cord + n][x_cord + m] {
                                 self.registers[0xF] = 1;
                             }
 
-                            pixels[y_cord + n][x_cord + m] = !pixels[y_cord + n][x_cord + m];
+                            display.pixels[y_cord + n][x_cord + m] =
+                                !display.pixels[y_cord + n][x_cord + m];
                         }
                     }
                 }
+
+                display.render();
             }
             Instruction::SkipIfPressed(x) => {
+                let pressed_keys = display.read_keys();
                 if pressed_keys.contains(&self.registers[x as usize]) {
                     self.pc += 2;
                 }
             }
             Instruction::SkipIfNotPressed(x) => {
+                let pressed_keys = display.read_keys();
                 if !pressed_keys.contains(&self.registers[x as usize]) {
                     self.pc += 2;
                 }
@@ -270,7 +277,10 @@ impl CPU {
             Instruction::GetDelayTimer(x) => {
                 self.registers[x as usize] = self.delay_timer.get_value()
             }
-            Instruction::WaitForKey(x) => todo!(),
+            Instruction::WaitForKey(x) => {
+                let key = display.wait_for_key();
+                self.registers[x as usize] = key;
+            }
             Instruction::SetDelayTimer(x) => self.delay_timer.set_value(self.registers[x as usize]),
             Instruction::SetSoundTimer(x) => self.sound_timer.set_value(self.registers[x as usize]),
             Instruction::AddToIndex(x) => {

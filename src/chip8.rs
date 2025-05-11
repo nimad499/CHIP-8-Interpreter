@@ -2,7 +2,7 @@ use core::time;
 use std::{thread::sleep, time::Instant};
 
 use crate::{
-    cpu::{CPU, Instruction},
+    cpu::CPU,
     display::{CLIBackend, Display, DisplayBackend},
     ram::{Ram, RomError},
 };
@@ -42,25 +42,8 @@ impl<B: DisplayBackend> CHIP8<B> {
         let instruction = self.cpu.fetch(self.ram.memory);
         let instruction = CPU::decode(instruction);
 
-        let pressed_keys = if matches!(
-            instruction,
-            Instruction::SkipIfPressed(..) | Instruction::SkipIfNotPressed(..)
-        ) {
-            self.display.read_keys()
-        } else {
-            Vec::new()
-        };
-
-        self.cpu.execute(
-            instruction,
-            &mut self.ram.memory,
-            &mut self.display.pixels,
-            pressed_keys,
-        );
-
-        if matches!(instruction, Instruction::Display { .. }) {
-            self.display.render();
-        }
+        self.cpu
+            .execute(instruction, &mut self.ram.memory, &mut self.display);
     }
 
     pub fn start(&mut self) {

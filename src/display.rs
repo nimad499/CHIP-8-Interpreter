@@ -1,6 +1,6 @@
 use std::{
     collections::HashSet,
-    io::{self, Write},
+    io::{self, Read, Write, stdin},
     time::{Duration, Instant},
 };
 
@@ -14,6 +14,7 @@ type KeyMap = [char; 16];
 pub trait DisplayBackend: Default {
     fn render(&mut self, pixels: &[[bool; 64]; 32]);
     fn read_keys(&self) -> Vec<u8>;
+    fn wait_for_key(&self) -> u8;
 }
 
 pub struct CLIBackend {
@@ -108,6 +109,18 @@ impl DisplayBackend for CLIBackend {
 
         return pressed_keys;
     }
+
+    fn wait_for_key(&self) -> u8 {
+        loop {
+            for b in stdin().bytes() {
+                let b = b.unwrap();
+
+                if self.key_map.contains(&(b as char)) {
+                    return b;
+                }
+            }
+        }
+    }
 }
 
 pub struct Display<B: DisplayBackend> {
@@ -129,5 +142,9 @@ impl<B: DisplayBackend> Display<B> {
 
     pub fn read_keys(&self) -> Vec<u8> {
         return self.backend.read_keys();
+    }
+
+    pub fn wait_for_key(&self) -> u8 {
+        return self.backend.wait_for_key();
     }
 }
