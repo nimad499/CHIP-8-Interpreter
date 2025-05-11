@@ -26,6 +26,7 @@ pub enum Instruction {
     SetDelayTimer(u8),
     SetSoundTimer(u8),
     AddToIndex(u8),
+    SetIndexToFontLocation(u8),
     BCDConversion(u8),
     Store(u8),
     Load(u8),
@@ -89,7 +90,7 @@ impl CPU {
             0x00 => match low_byte {
                 0xE0 => Instruction::ClearScreen(),
                 0xEE => Instruction::Return(),
-                _ => panic!("Unknown instruction: {:16X}", instruction),
+                _ => panic!("Unknown instruction: {:X}", instruction),
             },
             0x10 => Instruction::Jump(nnn),
             0x20 => Instruction::CallSub(nnn),
@@ -126,7 +127,7 @@ impl CPU {
             0xE0 => match low_byte {
                 0x9E => Instruction::SkipIfPressed(x),
                 0xA1 => Instruction::SkipIfNotPressed(x),
-                _ => panic!("Invalid instruction: {:X}", instruction),
+                _ => panic!("Unknown instruction: {:X}", instruction),
             },
             0xF0 => match low_byte {
                 0x07 => Instruction::GetDelayTimer(x),
@@ -134,10 +135,11 @@ impl CPU {
                 0x15 => Instruction::SetDelayTimer(x),
                 0x18 => Instruction::SetSoundTimer(x),
                 0x1E => Instruction::AddToIndex(x),
+                0x29 => Instruction::SetIndexToFontLocation(x),
                 0x33 => Instruction::BCDConversion(x),
                 0x55 => Instruction::Store(x),
                 0x65 => Instruction::Load(x),
-                _ => panic!("Invalid instruction: {:X}", instruction),
+                _ => panic!("Unknown instruction: {:X}", instruction),
             },
             _ => unsafe { unreachable_unchecked() },
         };
@@ -279,6 +281,7 @@ impl CPU {
                     self.registers[x as usize] = 1;
                 }
             }
+            Instruction::SetIndexToFontLocation(x) => self.i = x as u16 * 5 + 0x50,
             Instruction::BCDConversion(x) => {
                 let vx = self.registers[x as usize];
                 let i = self.i as usize;
