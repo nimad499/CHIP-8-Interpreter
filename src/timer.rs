@@ -22,10 +22,10 @@ impl Timer {
     }
 
     pub fn get_value(&mut self) -> u8 {
-        let ticks = self.start.elapsed().as_micros() / (1000000 / self.frequency as u128);
-        self.start -= Duration::from_micros(1000000 * ticks as u64);
+        let ticks = self.start.elapsed().as_micros() as u64 / (1000000 / self.frequency as u64);
+        self.start += Duration::from_micros(1000000 * ticks as u64);
 
-        if ticks > u8::MAX as u128 {
+        if ticks > u8::MAX as u64 {
             // ToDo: cold_path()
             self.value = 0;
         } else {
