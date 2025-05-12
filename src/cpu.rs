@@ -313,3 +313,110 @@ impl CPU {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        cpu::Instruction::*,
+        display::{CLIBackend, Display},
+        ram::Ram,
+    };
+
+    use super::CPU;
+
+    #[test]
+    fn cpu_execution() {
+        let mut ram = Ram::new();
+        let mut display = Display::new(CLIBackend::default());
+        let mut cpu = CPU::new();
+
+        macro_rules! execute {
+            ($instruction:expr) => {
+                cpu.execute($instruction, &mut ram.memory, &mut display);
+            };
+        }
+
+        execute!(Jump(10));
+        assert_eq!(cpu.pc, 10);
+        execute!(Jump(0));
+        assert_eq!(cpu.pc, 0);
+
+        execute!(CallSub(20));
+        assert_eq!(cpu.pc, 20);
+
+        execute!(Return());
+        assert_eq!(cpu.pc, 0);
+
+        execute!(Set(0, 2));
+        assert_eq!(cpu.registers[0], 2);
+
+        execute!(Add(0, 2));
+        assert_eq!(cpu.registers[0], 4);
+
+        execute!(Set(1, 4));
+        assert_eq!(cpu.registers[1], 4);
+
+        execute!(Set(2, 2));
+        assert_eq!(cpu.registers[2], 2);
+
+        execute!(SkipEq(0, 4));
+        assert_eq!(cpu.pc, 2);
+        execute!(SkipEq(0, 0));
+        assert_eq!(cpu.pc, 2);
+
+        execute!(SkipNEq(0, 0));
+        assert_eq!(cpu.pc, 4);
+        execute!(SkipNEq(0, 4));
+        assert_eq!(cpu.pc, 4);
+
+        execute!(SkipRegEq(0, 1));
+        assert_eq!(cpu.pc, 6);
+        execute!(SkipRegEq(0, 2));
+        assert_eq!(cpu.pc, 6);
+
+        for i in 0..=0xF {
+            execute!(SetIndexToFontLocation(i as u8));
+            assert_eq!(cpu.i, 0x50 + i * 0x5);
+        }
+
+        for i in 0..=0xF {
+            execute!(Set(i, i));
+            assert_eq!(cpu.registers[i as usize], i);
+        }
+        execute!(SetIndex(0));
+        assert_eq!(cpu.i, 0);
+        execute!(Store(0xF));
+        assert_eq!(ram.memory[0..=0xF], (0..=0xF).collect::<Vec<u8>>());
+
+        for i in 0..=0xF {
+            execute!(Set(i, 0));
+            assert_eq!(cpu.registers[i as usize], 0);
+        }
+        execute!(Load(0xF));
+        assert_eq!(cpu.registers[0..=0xF], (0..=0xF).collect::<Vec<u8>>());
+
+        execute!(AddToIndex(1));
+        assert_eq!(cpu.i, 1);
+
+        execute!(Set(0, 12));
+        assert_eq!(cpu.registers[0], 12);
+        execute!(BCDConversion(0));
+        for i in 1..=3 {
+            assert_eq!(ram.memory[i], i as u8 - 1);
+        }
+
+        execute!(Set(0, 1));
+        assert_eq!(cpu.registers[0], 1);
+        execute!(JumpWithOffset(0x5));
+        assert_eq!(cpu.pc, 0x6);
+
+        for i in 0..=0xF {
+            execute!(Random(i, 0));
+            assert_eq!(cpu.registers[i as usize], 0);
+        }
+        for i in 0..=0xF {
+            execute!(Random(i, 0x0F));
+            assert!(cpu.registers[i as usize] <= 0x0F);
+        }
+    }
+}
