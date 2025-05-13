@@ -1,3 +1,4 @@
+use core::fmt;
 use std::hint::unreachable_unchecked;
 
 use crate::{
@@ -310,6 +311,49 @@ impl CPU {
 
                 self.registers[0..=x as usize].copy_from_slice(&memory[i..=(i + x as usize)]);
             }
+        }
+    }
+}
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Instruction::ClearScreen() => write!(f, "CLS"),
+            Instruction::Return() => write!(f, "RET"),
+            Instruction::Jump(nnn) => write!(f, "JP 0x{nnn:X}"),
+            Instruction::CallSub(nnn) => write!(f, "CALL 0x{nnn:X}"),
+            Instruction::SkipEq(x, nn) => write!(f, "SE V{x:X}, 0x{nn:X}"),
+            Instruction::SkipNEq(x, nn) => write!(f, "SNE V{x:X}, 0x{nn:X}"),
+            Instruction::SkipRegEq(x, y) => write!(f, "SE V{x:X}, V{y:X}"),
+            Instruction::Set(x, nn) => write!(f, "LD V{x:X}, 0x{nn:X}"),
+            Instruction::Add(x, nn) => write!(f, "ADD V{x:X}, 0x{nn:X}"),
+            Instruction::AluOperation { x, y, operation } => match operation {
+                AluOp::LoadRegReg => write!(f, "LD V{x:X}, V{y:X}"),
+                AluOp::Or => write!(f, "OR V{x:X}, V{y:X}"),
+                AluOp::And => write!(f, "AND V{x:X}, V{y:X}"),
+                AluOp::Xor => write!(f, "XOR V{x:X}, V{y:X}"),
+                AluOp::AddRegReg => write!(f, "ADD V{x:X}, V{y:X}"),
+                AluOp::Sub => write!(f, "SUB V{x:X}, V{y:X}"),
+                AluOp::ShiftRight => write!(f, "SHR V{x:X} {{, V{y:X}}}"),
+                AluOp::SubNeg => write!(f, "SUBN V{x:X}, V{y:X}"),
+                AluOp::ShiftLeft => write!(f, "SHL V{x:X} {{, V{y:X}}}"),
+            },
+            Instruction::SkipRegNEq(x, y) => write!(f, "SNE V{x:X}, V{y:X}"),
+            Instruction::SetIndex(nnn) => write!(f, "LD I, 0x{nnn:X}"),
+            Instruction::JumpWithOffset(nnn) => write!(f, "JP V0, 0x{nnn:X}"),
+            Instruction::Random(x, nn) => write!(f, "RND V{x:X}, 0x{nn:X}"),
+            Instruction::Display { x, y, height } => write!(f, "DRW V{x:X}, V{y:X}, {height:X}"),
+            Instruction::SkipIfPressed(x) => write!(f, "SKP V{x:X}"),
+            Instruction::SkipIfNotPressed(x) => write!(f, "SKNP V{x:X}"),
+            Instruction::GetDelayTimer(x) => write!(f, "LD V{x:X}, DT"),
+            Instruction::WaitForKey(x) => write!(f, "LD V{x:X}, K"),
+            Instruction::SetDelayTimer(x) => write!(f, "LD DT, V{x:X}"),
+            Instruction::SetSoundTimer(x) => write!(f, "LD ST, V{x:X}"),
+            Instruction::AddToIndex(x) => write!(f, "ADD I, V{x:X}"),
+            Instruction::SetIndexToFontLocation(x) => write!(f, "LD F, V{x:X}"),
+            Instruction::BCDConversion(x) => write!(f, "LD B, V{x:X}"),
+            Instruction::Store(x) => write!(f, "LD [I], V{x:X}"),
+            Instruction::Load(x) => write!(f, "LD V{x:X}, [I]"),
         }
     }
 }
