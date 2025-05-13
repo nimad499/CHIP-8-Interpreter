@@ -34,6 +34,7 @@ pub enum Instruction {
     BCDConversion(u8),
     Store(u8),
     Load(u8),
+    Unknown(u16),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -94,7 +95,7 @@ impl CPU {
             0x00 => match low_byte {
                 0xE0 => Instruction::ClearScreen(),
                 0xEE => Instruction::Return(),
-                _ => panic!("Unknown instruction: {:X}", instruction),
+                _ => Instruction::Unknown(instruction),
             },
             0x10 => Instruction::Jump(nnn),
             0x20 => Instruction::CallSub(nnn),
@@ -116,7 +117,7 @@ impl CPU {
                     0x6 => AluOp::ShiftRight,
                     0x7 => AluOp::SubNeg,
                     0xE => AluOp::ShiftLeft,
-                    _ => panic!("Invalid ALU operation"),
+                    _ => return Instruction::Unknown(instruction),
                 },
             },
             0x90 => Instruction::SkipRegNEq(x, y),
@@ -131,7 +132,7 @@ impl CPU {
             0xE0 => match low_byte {
                 0x9E => Instruction::SkipIfPressed(x),
                 0xA1 => Instruction::SkipIfNotPressed(x),
-                _ => panic!("Unknown instruction: {:X}", instruction),
+                _ => Instruction::Unknown(instruction),
             },
             0xF0 => match low_byte {
                 0x07 => Instruction::GetDelayTimer(x),
@@ -143,7 +144,7 @@ impl CPU {
                 0x33 => Instruction::BCDConversion(x),
                 0x55 => Instruction::Store(x),
                 0x65 => Instruction::Load(x),
-                _ => panic!("Unknown instruction: {:X}", instruction),
+                _ => Instruction::Unknown(instruction),
             },
             _ => unsafe { unreachable_unchecked() },
         };
@@ -311,6 +312,7 @@ impl CPU {
 
                 self.registers[0..=x as usize].copy_from_slice(&memory[i..=(i + x as usize)]);
             }
+            Instruction::Unknown(instruction) => panic!("Unknown instruction: {:X}", instruction),
         }
     }
 }
@@ -354,8 +356,22 @@ impl fmt::Display for Instruction {
             Instruction::BCDConversion(x) => write!(f, "LD B, V{x:X}"),
             Instruction::Store(x) => write!(f, "LD [I], V{x:X}"),
             Instruction::Load(x) => write!(f, "LD V{x:X}, [I]"),
+            Instruction::Unknown(instruction) => write!(f, ".dw 0x{instruction:X}"),
         }
     }
+}
+
+pub fn disassemble(rom_data: &[u8]) -> String {
+    let mut result = String::with_capacity(19480);
+
+    for i in 0..rom_data.len() - 1 {
+        let instruction = ((rom_data[i] as u16) << 8) | rom_data[i + 1] as u16;
+        let instruction = CPU::decode(instruction);
+
+        result.push_str(&(instruction.to_string() + "\n"));
+    }
+
+    return result;
 }
 
 #[cfg(test)]
