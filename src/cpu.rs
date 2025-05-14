@@ -317,6 +317,22 @@ impl CPU {
     }
 }
 
+impl fmt::Display for CPU {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // ToDo: Replace this with a procedural macro
+        let mut registers = String::new();
+        for n in 0..self.registers.len() {
+            registers.push_str(&format!("V{:X}: {:X}\n", n, self.registers[n]));
+        }
+
+        return write!(
+            f,
+            "PC: 0x{:X}\nI: 0x{:X}\nStack: {:?}\n{}",
+            self.pc, self.i, self.stack, registers
+        );
+    }
+}
+
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

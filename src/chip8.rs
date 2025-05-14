@@ -46,11 +46,24 @@ impl<B: DisplayBackend> CHIP8<B> {
             .execute(instruction, &mut self.ram.memory, &mut self.display);
     }
 
-    pub fn start(&mut self) {
+    fn debug_tick(&mut self) {
+        let instruction = self.cpu.fetch(self.ram.memory);
+        let instruction = CPU::decode(instruction);
+
+        self.cpu
+            .execute(instruction, &mut self.ram.memory, &mut self.display);
+
+        self.display
+            .log(format!("{}\n{}", instruction.to_string(), self.cpu));
+    }
+
+    pub fn start(&mut self, debug: bool) {
+        let tick = if debug { Self::debug_tick } else { Self::tick };
+
         loop {
             let start = Instant::now();
 
-            self.tick();
+            tick(self);
 
             let elapsed = ((1000000000 / 700) as u128).overflowing_sub(start.elapsed().as_nanos());
             let sleep_duration = (elapsed.0 * !elapsed.1 as u128) as u64;
