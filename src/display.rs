@@ -15,6 +15,7 @@ pub trait DisplayBackend: Default {
     fn render(&mut self, pixels: &[[bool; 64]; 32]);
     fn read_keys(&self) -> Vec<u8>;
     fn wait_for_key(&self) -> u8;
+    fn log(&self, message: String);
 }
 
 pub struct CLIBackend {
@@ -121,6 +122,18 @@ impl DisplayBackend for CLIBackend {
             }
         }
     }
+
+    fn log(&self, message: String) {
+        // ToDo: Get rid of redrawing
+        Self::clear();
+
+        print!("{}", self.buffer);
+
+        let message = message.replace("\n", "\r\n");
+        print!("{}\r", message);
+
+        io::stdout().flush().unwrap();
+    }
 }
 
 pub struct Display<B: DisplayBackend> {
@@ -146,5 +159,9 @@ impl<B: DisplayBackend> Display<B> {
 
     pub fn wait_for_key(&self) -> u8 {
         return self.backend.wait_for_key();
+    }
+
+    pub fn log(&self, message: String) {
+        self.backend.log(message);
     }
 }
