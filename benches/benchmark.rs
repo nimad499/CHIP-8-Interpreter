@@ -30,5 +30,20 @@ fn cpu_fetch_benchmark(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, disassemble_benchmark, cpu_fetch_benchmark);
+fn cpu_fmt_display_benchmark(c: &mut Criterion) {
+    let cpu = CPU::new();
+
+    c.bench_function("cpu_fmt_display", |b| {
+        b.iter(|| {
+            format!("{cpu}");
+        })
+    });
+}
+
+criterion_group!(
+    benches,
+    disassemble_benchmark,
+    cpu_fetch_benchmark,
+    cpu_fmt_display_benchmark
+);
 criterion_main!(benches);
