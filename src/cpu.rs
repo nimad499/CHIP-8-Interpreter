@@ -323,7 +323,7 @@ impl fmt::Display for CPU {
         // ToDo: Replace this with a procedural macro
         let mut registers = String::new();
         for n in 0..self.registers.len() {
-            registers.push_str(&format!("V{:X}: {:X}\n", n, self.registers[n]));
+            writeln!(registers, "V{:X}: {:X}", n, self.registers[n]).unwrap();
         }
 
         return write!(
