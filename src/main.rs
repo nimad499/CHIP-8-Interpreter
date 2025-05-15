@@ -3,14 +3,8 @@
 #![allow(clippy::needless_return)]
 #![allow(clippy::upper_case_acronyms)]
 
-use chip8::CHIP8;
+use chip_8::chip8::CHIP8;
 use std::path::Path;
-
-mod chip8;
-mod cpu;
-mod display;
-mod ram;
-mod timer;
 
 fn main() {
     let rom_path = Path::new("/home/nima/Downloads/1-chip8-logo.ch8");
