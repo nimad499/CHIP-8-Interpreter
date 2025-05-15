@@ -1,4 +1,5 @@
 use core::fmt;
+use std::fmt::Write;
 use std::hint::unreachable_unchecked;
 
 use crate::{
@@ -378,13 +379,17 @@ impl fmt::Display for Instruction {
 }
 
 pub fn disassemble(rom_data: &[u8]) -> String {
-    let mut result = String::with_capacity(19480);
+    let mut result = String::new();
 
-    for i in 0..rom_data.len() - 1 {
-        let instruction = ((rom_data[i] as u16) << 8) | rom_data[i + 1] as u16;
+    rom_data.chunks_exact(2).for_each(|instruction| {
+        let instruction = ((instruction[0] as u16) << 8) | instruction[1] as u16;
         let instruction = CPU::decode(instruction);
 
-        result.push_str(&(instruction.to_string() + "\n"));
+        writeln!(result, "{instruction}").unwrap();
+    });
+
+    if rom_data.len() % 2 == 1 {
+        writeln!(result, ".db 0x{}", rom_data.last().unwrap()).unwrap();
     }
 
     return result;
