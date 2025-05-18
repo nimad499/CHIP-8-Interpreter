@@ -1,27 +1,25 @@
+use crossterm::{
+    event::{self, Event, poll},
+    terminal,
+};
+use minifb::{Key, Window, WindowOptions};
 use std::{
     collections::HashSet,
     io::{self, Read, Write, stdin},
     time::{Duration, Instant},
 };
 
-use crossterm::{
-    event::{self, Event, poll},
-    terminal,
-};
-
-type KeyMap = [char; 16];
-
 pub trait DisplayBackend: Default {
     fn render(&mut self, pixels: &[[bool; 64]; 32]);
-    fn read_keys(&self) -> Vec<u8>;
-    fn wait_for_key(&self) -> u8;
+    fn read_keys(&mut self) -> Vec<u8>;
+    fn wait_for_key(&mut self) -> u8;
     fn log(&self, message: String);
 }
 
 pub struct CLIBackend {
     pub pixel_character: char,
     buffer: String,
-    key_map: KeyMap,
+    key_map: [char; 16],
 }
 
 impl Drop for CLIBackend {
@@ -31,7 +29,7 @@ impl Drop for CLIBackend {
 }
 
 impl CLIBackend {
-    fn new() -> Self {
+    pub fn new() -> Self {
         terminal::enable_raw_mode().unwrap();
 
         return CLIBackend {
@@ -80,7 +78,7 @@ impl DisplayBackend for CLIBackend {
         io::stdout().flush().unwrap();
     }
 
-    fn read_keys(&self) -> Vec<u8> {
+    fn read_keys(&mut self) -> Vec<u8> {
         let mut pressed_keys = HashSet::<u8>::new();
 
         let start = Instant::now();
@@ -111,7 +109,7 @@ impl DisplayBackend for CLIBackend {
         return pressed_keys;
     }
 
-    fn wait_for_key(&self) -> u8 {
+    fn wait_for_key(&mut self) -> u8 {
         loop {
             for b in stdin().bytes() {
                 let b = b.unwrap();
@@ -136,6 +134,121 @@ impl DisplayBackend for CLIBackend {
     }
 }
 
+pub struct WindowSize {
+    pub width: usize,
+    pub height: usize,
+}
+
+pub struct GUIBackend {
+    window: Window,
+    buffer: Vec<u32>,
+    key_map: [Key; 16],
+}
+
+impl GUIBackend {
+    pub fn new(window_size: WindowSize) -> Self {
+        let mut window = Window::new(
+            "CHIP8",
+            window_size.width,
+            window_size.height,
+            WindowOptions::default(),
+        )
+        .unwrap();
+
+        window.set_target_fps(60);
+
+        let buffer = vec![0; window_size.width * window_size.height];
+
+        return GUIBackend {
+            window,
+            buffer,
+            key_map: [
+                Key::Key1,
+                Key::Key2,
+                Key::Key3,
+                Key::Key4,
+                Key::Q,
+                Key::W,
+                Key::E,
+                Key::R,
+                Key::A,
+                Key::S,
+                Key::D,
+                Key::F,
+                Key::Z,
+                Key::X,
+                Key::C,
+                Key::V,
+            ],
+        };
+    }
+}
+
+impl Default for GUIBackend {
+    fn default() -> Self {
+        return Self::new(WindowSize {
+            width: 640,
+            height: 320,
+        });
+    }
+}
+
+impl DisplayBackend for GUIBackend {
+    fn render(&mut self, pixels: &[[bool; 64]; 32]) {
+        let (width, height) = self.window.get_size();
+
+        let height_multiplier = height / 32;
+        let width_multiplier = width / 64;
+        for (i, row) in pixels.iter().enumerate() {
+            for (j, &pixel) in row.iter().enumerate() {
+                let value = pixel as u32 * 0x00FFFFFF;
+
+                for x in i * height_multiplier..i * height_multiplier + height_multiplier {
+                    for y in j * width_multiplier..j * width_multiplier + width_multiplier {
+                        self.buffer[x * width + y] = value;
+                    }
+                }
+            }
+        }
+
+        self.window
+            .update_with_buffer(&self.buffer, width, height)
+            .unwrap();
+    }
+
+    fn read_keys(&mut self) -> Vec<u8> {
+        self.window.update();
+
+        return self
+            .window
+            .get_keys()
+            .iter()
+            .filter_map(|pressed_key| {
+                if let Some(i) = self.key_map.iter().position(|k| pressed_key == k) {
+                    return Some(i as u8);
+                }
+                return None;
+            })
+            .collect();
+    }
+
+    fn wait_for_key(&mut self) -> u8 {
+        loop {
+            self.window.update();
+
+            for pressed_key in self.window.get_keys() {
+                if let Some(i) = self.key_map.iter().position(|k| pressed_key == *k) {
+                    return i as u8;
+                }
+            }
+        }
+    }
+
+    fn log(&self, message: String) {
+        println!("{message}");
+    }
+}
+
 pub struct Display<B: DisplayBackend> {
     pub pixels: [[bool; 64]; 32],
     pub backend: B,
@@ -153,11 +266,11 @@ impl<B: DisplayBackend> Display<B> {
         self.backend.render(&self.pixels);
     }
 
-    pub fn read_keys(&self) -> Vec<u8> {
+    pub fn read_keys(&mut self) -> Vec<u8> {
         return self.backend.read_keys();
     }
 
-    pub fn wait_for_key(&self) -> u8 {
+    pub fn wait_for_key(&mut self) -> u8 {
         return self.backend.wait_for_key();
     }
 
