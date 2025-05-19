@@ -36,9 +36,8 @@ impl CLIBackend {
             pixel_character: 'O',
             // ToDo: Replace this with array
             buffer: String::with_capacity(2112),
-            // ToDo: Check the performance of HashMap for the key_map
+            // ToDo: Check the performance of enum for the key_map
             key_map: [
-                // 49, 50, 51, 52, 113, 119, 101, 114, 97, 115, 100, 102, 122, 120, 99, 118,
                 '1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v',
             ],
         };
@@ -89,15 +88,12 @@ impl DisplayBackend for CLIBackend {
             if poll(single_polling_time).unwrap() {
                 if let Event::Key(event) = event::read().unwrap() {
                     if event.is_press() {
-                        match self
+                        if let Some(key_code) = self
                             .key_map
                             .iter()
                             .position(|key_code| *key_code == event.code.as_char().unwrap())
                         {
-                            Some(key_code) => {
-                                pressed_keys.insert(key_code as u8);
-                            }
-                            None => (),
+                            pressed_keys.insert(key_code as u8);
                         };
                     }
                 }
@@ -112,10 +108,10 @@ impl DisplayBackend for CLIBackend {
     fn wait_for_key(&mut self) -> u8 {
         loop {
             for b in stdin().bytes() {
-                let b = b.unwrap();
+                let b = b.unwrap() as char;
 
-                if self.key_map.contains(&(b as char)) {
-                    return b;
+                if let Some(i) = self.key_map.iter().position(|k| b == *k) {
+                    return i as u8;
                 }
             }
         }

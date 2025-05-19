@@ -6,6 +6,12 @@ pub struct Timer {
     start: Instant,
 }
 
+impl Default for Timer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Timer {
     pub fn new() -> Self {
         return Timer {
@@ -23,7 +29,7 @@ impl Timer {
 
     pub fn get_value(&mut self) -> u8 {
         let ticks = self.start.elapsed().as_micros() as u64 / (1000000 / self.frequency as u64);
-        self.start += Duration::from_micros(1000000 * ticks as u64);
+        self.start += Duration::from_micros(1000000 * ticks);
 
         if ticks > u8::MAX as u64 {
             // ToDo: cold_path()

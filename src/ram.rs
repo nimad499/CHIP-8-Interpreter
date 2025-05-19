@@ -26,12 +26,18 @@ pub struct Ram {
     pub memory: [u8; 4096],
 }
 
+impl Default for Ram {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Ram {
     pub fn new() -> Self {
         let mut memory: [u8; 4096] = [0; 4096];
         memory[0x50..=0x9F].copy_from_slice(&FONT_SET);
 
-        return Ram { memory: memory };
+        return Ram { memory };
     }
 
     pub fn load_rom(&mut self, rom_data: &[u8]) -> Result<(), RomError> {

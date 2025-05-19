@@ -1,8 +1,3 @@
-// ToDo: Replace magic numbers with const values
-#![allow(dead_code)]
-#![allow(clippy::needless_return)]
-#![allow(clippy::upper_case_acronyms)]
-
 use chip_8::{
     chip8::CHIP8,
     display::{GUIBackend, WindowSize},

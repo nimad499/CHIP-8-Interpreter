@@ -60,6 +60,12 @@ pub struct CPU {
     sound_timer: Timer,
 }
 
+impl Default for CPU {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CPU {
     pub fn new() -> Self {
         return CPU {

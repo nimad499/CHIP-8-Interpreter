@@ -13,6 +13,12 @@ pub struct CHIP8<B: DisplayBackend> {
     display: Display<B>,
 }
 
+impl Default for CHIP8<CLIBackend> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CHIP8<CLIBackend> {
     pub fn new() -> Self {
         return CHIP8 {
@@ -54,7 +60,7 @@ impl<B: DisplayBackend> CHIP8<B> {
             .execute(instruction, &mut self.ram.memory, &mut self.display);
 
         self.display
-            .log(format!("{}\n{}", instruction.to_string(), self.cpu));
+            .log(format!("{}\n{}", instruction, self.cpu));
     }
 
     pub fn start(&mut self, debug: bool) {
