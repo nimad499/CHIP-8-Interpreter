@@ -1,11 +1,11 @@
-use core::time;
-use std::{thread::sleep, time::Instant};
-
 use crate::{
+    constant::{chip8::CPU_INSTRUCTION_PER_SECOND, ram::ROM_START_LOCATION},
     cpu::CPU,
     display::{CLIBackend, Display, DisplayBackend},
     ram::{Ram, RomError},
 };
+use core::time;
+use std::{thread::sleep, time::Instant};
 
 pub struct CHIP8<B: DisplayBackend> {
     cpu: CPU,
@@ -39,7 +39,7 @@ impl<B: DisplayBackend> CHIP8<B> {
     }
 
     pub fn load_rom(&mut self, rom_data: &[u8]) -> Result<(), RomError> {
-        self.cpu.pc = 0x200;
+        self.cpu.pc = ROM_START_LOCATION as u16;
 
         return self.ram.load_rom(rom_data);
     }
@@ -59,8 +59,7 @@ impl<B: DisplayBackend> CHIP8<B> {
         self.cpu
             .execute(instruction, &mut self.ram.memory, &mut self.display);
 
-        self.display
-            .log(format!("{}\n{}", instruction, self.cpu));
+        self.display.log(format!("{}\n{}", instruction, self.cpu));
     }
 
     pub fn start(&mut self, debug: bool) {
@@ -71,7 +70,8 @@ impl<B: DisplayBackend> CHIP8<B> {
 
             tick(self);
 
-            let elapsed = ((1000000000 / 700) as u128).overflowing_sub(start.elapsed().as_nanos());
+            let elapsed = ((1000000000 / CPU_INSTRUCTION_PER_SECOND) as u128)
+                .overflowing_sub(start.elapsed().as_nanos());
             let sleep_duration = (elapsed.0 * !elapsed.1 as u128) as u64;
 
             sleep(time::Duration::from_nanos(sleep_duration));

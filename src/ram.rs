@@ -1,3 +1,5 @@
+use crate::constant::ram::{FONT_LOCATION, MEMORY_SIZE, ROM_START_LOCATION};
+
 // ToDo: Load this from a file
 const FONT_SET: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -23,7 +25,7 @@ pub enum RomError {
     InvalidRomSize(usize),
 }
 pub struct Ram {
-    pub memory: [u8; 4096],
+    pub memory: [u8; MEMORY_SIZE],
 }
 
 impl Default for Ram {
@@ -34,18 +36,19 @@ impl Default for Ram {
 
 impl Ram {
     pub fn new() -> Self {
-        let mut memory: [u8; 4096] = [0; 4096];
-        memory[0x50..=0x9F].copy_from_slice(&FONT_SET);
+        let mut memory: [u8; MEMORY_SIZE] = [0; MEMORY_SIZE];
+        memory[FONT_LOCATION..=0x9F].copy_from_slice(&FONT_SET);
 
         return Ram { memory };
     }
 
     pub fn load_rom(&mut self, rom_data: &[u8]) -> Result<(), RomError> {
-        if self.memory.len() - rom_data.len() < 0x200 {
+        if self.memory.len() - rom_data.len() < ROM_START_LOCATION {
             return Err(RomError::InvalidRomSize(rom_data.len()));
         }
 
-        self.memory[0x200..(0x200 + rom_data.len())].copy_from_slice(rom_data);
+        self.memory[ROM_START_LOCATION..(ROM_START_LOCATION + rom_data.len())]
+            .copy_from_slice(rom_data);
 
         return Ok(());
     }

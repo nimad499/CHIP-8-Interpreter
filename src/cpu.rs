@@ -1,11 +1,15 @@
-use core::fmt;
-use std::fmt::Write;
-use std::hint::unreachable_unchecked;
-
 use crate::{
+    constant::{
+        cpu::GENERAL_PURPOSE_REGISTERS_COUNT,
+        display::{CHIP8_DISPLAY_HEIGHT, CHIP8_DISPLAY_WIDTH},
+        ram::{FONT_LOCATION, MEMORY_SIZE},
+    },
     display::{Display, DisplayBackend},
     timer::Timer,
 };
+use core::fmt;
+use std::fmt::Write;
+use std::hint::unreachable_unchecked;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Instruction {
@@ -54,7 +58,7 @@ pub enum AluOp {
 pub struct CPU {
     pub pc: u16,
     i: u16,
-    registers: [u8; 16],
+    registers: [u8; GENERAL_PURPOSE_REGISTERS_COUNT],
     stack: Vec<u16>,
     delay_timer: Timer,
     sound_timer: Timer,
@@ -71,14 +75,14 @@ impl CPU {
         return CPU {
             pc: 0,
             i: 0,
-            registers: [0; 16],
+            registers: [0; GENERAL_PURPOSE_REGISTERS_COUNT],
             stack: Vec::new(),
             delay_timer: Timer::new(),
             sound_timer: Timer::new(),
         };
     }
 
-    pub fn fetch(&mut self, memory: [u8; 4096]) -> u16 {
+    pub fn fetch(&mut self, memory: [u8; MEMORY_SIZE]) -> u16 {
         let instruction =
             ((memory[self.pc as usize] as u16) << 8) | memory[(self.pc + 1) as usize] as u16;
 
@@ -162,11 +166,17 @@ impl CPU {
     pub fn execute<B: DisplayBackend>(
         &mut self,
         instruction: Instruction,
-        memory: &mut [u8; 4096],
+        memory: &mut [u8; MEMORY_SIZE],
         display: &mut Display<B>,
     ) {
         match instruction {
-            Instruction::ClearScreen() => display.pixels = [[false; 64]; 32],
+            Instruction::ClearScreen() => {
+                for row in display.pixels.iter_mut() {
+                    for pixel in row.iter_mut() {
+                        *pixel = false;
+                    }
+                }
+            }
             Instruction::Return() => {
                 self.pc = self.stack.pop().expect("Return while stack is empty.")
             }
@@ -239,20 +249,20 @@ impl CPU {
             Instruction::JumpWithOffset(nnn) => self.pc = nnn + self.registers[0x0] as u16,
             Instruction::Random(x, nn) => self.registers[x as usize] = fastrand::u8(..) & nn,
             Instruction::Display { x, y, height } => {
-                let x_cord = (self.registers[x as usize] % 64) as usize;
-                let y_cord = (self.registers[y as usize] % 32) as usize;
+                let x_cord = (self.registers[x as usize] % CHIP8_DISPLAY_WIDTH as u8) as usize;
+                let y_cord = (self.registers[y as usize] % CHIP8_DISPLAY_HEIGHT as u8) as usize;
 
                 self.registers[0xF] = 0;
 
                 for n in 0..height as usize {
-                    if y_cord + n >= 32 {
+                    if y_cord + n >= CHIP8_DISPLAY_HEIGHT {
                         break;
                     }
 
                     let row = memory[self.i as usize + n];
 
                     for m in 0..8 {
-                        if x_cord + m >= 64 {
+                        if x_cord + m >= CHIP8_DISPLAY_WIDTH {
                             break;
                         }
 
@@ -300,7 +310,7 @@ impl CPU {
                     self.registers[x as usize] = 1;
                 }
             }
-            Instruction::SetIndexToFontLocation(x) => self.i = x as u16 * 5 + 0x50,
+            Instruction::SetIndexToFontLocation(x) => self.i = x as u16 * 5 + FONT_LOCATION as u16,
             Instruction::BCDConversion(x) => {
                 let vx = self.registers[x as usize];
                 let i = self.i as usize;
@@ -404,6 +414,10 @@ pub fn disassemble(rom_data: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use crate::{
+        constant::{
+            display::{CHIP8_DISPLAY_HEIGHT, CHIP8_DISPLAY_WIDTH},
+            ram::FONT_LOCATION,
+        },
         cpu::Instruction::*,
         display::{CLIBackend, Display},
         ram::Ram,
@@ -463,7 +477,7 @@ mod tests {
 
         for i in 0..=0xF {
             execute!(SetIndexToFontLocation(i as u8));
-            assert_eq!(cpu.i, 0x50 + i * 0x5);
+            assert_eq!(cpu.i, FONT_LOCATION as u16 + i * 0x5);
         }
 
         for i in 0..=0xF {
@@ -505,5 +519,14 @@ mod tests {
             execute!(Random(i, 0x0F));
             assert!(cpu.registers[i as usize] <= 0x0F);
         }
+
+        for i in (0..display.pixels.as_flattened().len()).step_by(3) {
+            display.pixels.as_flattened_mut()[i] = true;
+        }
+        execute!(ClearScreen());
+        assert_eq!(
+            display.pixels,
+            [[false; CHIP8_DISPLAY_WIDTH]; CHIP8_DISPLAY_HEIGHT]
+        );
     }
 }

@@ -1,3 +1,6 @@
+use crate::constant::display::{
+    CHIP8_DISPLAY_HEIGHT, CHIP8_DISPLAY_WIDTH, CLI_BACKEND_BUFFER_SIZE,
+};
 use crossterm::{
     event::{self, Event, poll},
     terminal,
@@ -10,7 +13,7 @@ use std::{
 };
 
 pub trait DisplayBackend: Default {
-    fn render(&mut self, pixels: &[[bool; 64]; 32]);
+    fn render(&mut self, pixels: &[[bool; CHIP8_DISPLAY_WIDTH]; CHIP8_DISPLAY_HEIGHT]);
     fn read_keys(&mut self) -> Vec<u8>;
     fn wait_for_key(&mut self) -> u8;
     fn log(&self, message: String);
@@ -35,7 +38,7 @@ impl CLIBackend {
         return CLIBackend {
             pixel_character: 'O',
             // ToDo: Replace this with array
-            buffer: String::with_capacity(2112),
+            buffer: String::with_capacity(CLI_BACKEND_BUFFER_SIZE),
             // ToDo: Check the performance of enum for the key_map
             key_map: [
                 '1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v',
@@ -60,7 +63,7 @@ impl Default for CLIBackend {
 }
 
 impl DisplayBackend for CLIBackend {
-    fn render(&mut self, pixels: &[[bool; 64]; 32]) {
+    fn render(&mut self, pixels: &[[bool; CHIP8_DISPLAY_WIDTH]; CHIP8_DISPLAY_HEIGHT]) {
         self.buffer.clear();
 
         for row in pixels.iter() {
@@ -183,18 +186,18 @@ impl GUIBackend {
 impl Default for GUIBackend {
     fn default() -> Self {
         return Self::new(WindowSize {
-            width: 640,
-            height: 320,
+            width: CHIP8_DISPLAY_WIDTH * 10,
+            height: CHIP8_DISPLAY_HEIGHT * 10,
         });
     }
 }
 
 impl DisplayBackend for GUIBackend {
-    fn render(&mut self, pixels: &[[bool; 64]; 32]) {
+    fn render(&mut self, pixels: &[[bool; CHIP8_DISPLAY_WIDTH]; CHIP8_DISPLAY_HEIGHT]) {
         let (width, height) = self.window.get_size();
 
-        let height_multiplier = height / 32;
-        let width_multiplier = width / 64;
+        let height_multiplier = height / CHIP8_DISPLAY_HEIGHT;
+        let width_multiplier = width / CHIP8_DISPLAY_WIDTH;
         for (i, row) in pixels.iter().enumerate() {
             for (j, &pixel) in row.iter().enumerate() {
                 let value = pixel as u32 * 0x00FFFFFF;
@@ -246,14 +249,14 @@ impl DisplayBackend for GUIBackend {
 }
 
 pub struct Display<B: DisplayBackend> {
-    pub pixels: [[bool; 64]; 32],
+    pub pixels: [[bool; CHIP8_DISPLAY_WIDTH]; CHIP8_DISPLAY_HEIGHT],
     pub backend: B,
 }
 
 impl<B: DisplayBackend> Display<B> {
     pub fn new(backend: B) -> Self {
         return Display {
-            pixels: [[false; 64]; 32],
+            pixels: [[false; CHIP8_DISPLAY_WIDTH]; CHIP8_DISPLAY_HEIGHT],
             backend,
         };
     }
